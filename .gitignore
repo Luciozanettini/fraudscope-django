@@ -1,0 +1,16 @@
+# Entorno
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Datos locales y artefactos generados (se recrean con los comandos del README)
+db.sqlite3
+ml/model.joblib
+ml/metrics.json
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.claude/

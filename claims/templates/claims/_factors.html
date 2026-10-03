@@ -1,0 +1,23 @@
+{% load claims_extras %}
+{% if factors %}
+  <ul class="space-y-3">
+    {% for f in factors %}
+      <li>
+        <div class="flex items-baseline justify-between gap-3 text-sm">
+          <span class="text-slate-600">{{ f.feature|feature_label }}: <span class="font-semibold text-slate-900">{% value_label f.feature f.value %}</span></span>
+          <span class="shrink-0 font-semibold tabular-nums {% if f.delta > 0 %}text-red-600{% else %}text-emerald-600{% endif %}">
+            {% if f.delta > 0 %}+{% else %}−{% endif %}{{ f.delta|abs_pct }} pts
+          </span>
+        </div>
+        <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div class="h-full rounded-full {% if f.delta > 0 %}bg-red-500{% else %}bg-emerald-500{% endif %}" style="width: {% widthratio f.delta|abs_pct 60 100 %}%; max-width: 100%"></div>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+  <p class="mt-4 text-xs leading-relaxed text-slate-400">
+    Un reclamo típico del histórico tiene {{ base_pct }}% de probabilidad. Cada barra muestra cuántos puntos suma o resta ese valor (valores de Shapley aproximados).
+  </p>
+{% else %}
+  <p class="text-sm text-slate-500">Este reclamo es muy parecido a un reclamo típico: ninguna variable mueve el score de forma relevante.</p>
+{% endif %}

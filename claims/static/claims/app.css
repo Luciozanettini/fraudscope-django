@@ -1,0 +1,61 @@
+.nav-link {
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: rgb(71 85 105);
+  transition: background-color 0.15s, color 0.15s;
+}
+.nav-link:hover { background: rgb(241 245 249); color: rgb(15 23 42); }
+.nav-active { background: rgb(238 242 255); color: rgb(67 56 202); }
+
+.card {
+  border-radius: 1rem;
+  border: 1px solid rgb(226 232 240);
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge::before { content: ""; width: 0.375rem; height: 0.375rem; border-radius: 9999px; background: currentColor; }
+
+.risk-alto  { background: rgb(254 242 242); color: rgb(185 28 28); }
+.risk-medio { background: rgb(255 251 235); color: rgb(180 83 9); }
+.risk-bajo  { background: rgb(236 253 245); color: rgb(4 120 87); }
+
+.status-pending   { background: rgb(241 245 249); color: rgb(71 85 105); }
+.status-reviewing { background: rgb(239 246 255); color: rgb(29 78 216); }
+.status-cleared   { background: rgb(236 253 245); color: rgb(4 120 87); }
+.status-confirmed { background: rgb(254 242 242); color: rgb(185 28 28); }
+
+.bar-alto  { background: rgb(239 68 68); }
+.bar-medio { background: rgb(245 158 11); }
+.bar-bajo  { background: rgb(16 185 129); }
+
+.text-risk-alto  { color: rgb(220 38 38); }
+.text-risk-medio { color: rgb(217 119 6); }
+.text-risk-bajo  { color: rgb(5 150 105); }
+
+/* Medidor semicircular del score */
+.gauge { --pct: 0; --color: rgb(16 185 129); position: relative; width: 13rem; aspect-ratio: 2 / 1; overflow: hidden; }
+.gauge::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -100% 0;
+  border-radius: 9999px;
+  background: conic-gradient(from -90deg, var(--color) calc(var(--pct) * 0.5%), rgb(226 232 240) 0 50%, transparent 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent 72%, #000 73%);
+          mask: radial-gradient(farthest-side, transparent 72%, #000 73%);
+}
+.gauge-alto  { --color: rgb(239 68 68); }
+.gauge-medio { --color: rgb(245 158 11); }
+.gauge-bajo  { --color: rgb(16 185 129); }
+
+.field-error input, .field-error select { border-color: rgb(239 68 68); }

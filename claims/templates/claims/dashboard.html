@@ -1,0 +1,205 @@
+{% extends "claims/base.html" %}
+{% load claims_extras %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <p class="text-sm font-medium text-indigo-600">Panel de auditoría</p>
+    <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Detección de fraude en reclamos</h1>
+    <p class="mt-1 text-sm text-slate-500">Priorizá qué reclamos auditar según la probabilidad de fraude que estima el modelo.</p>
+  </div>
+  <a href="{% url 'claims:evaluate' %}" class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
+    <svg viewBox="0 0 20 20" class="h-4 w-4" fill="currentColor"><path d="M10 3a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H4a1 1 0 1 1 0-2h5V4a1 1 0 0 1 1-1z"/></svg>
+    Evaluar un reclamo
+  </a>
+</div>
+
+<!-- KPIs -->
+<section class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+  <div class="card p-5">
+    <p class="text-sm text-slate-500">Reclamos analizados</p>
+    <p class="mt-2 text-2xl sm:text-3xl font-bold tabular-nums text-slate-900">{{ kpis.total }}</p>
+    <p class="mt-1 text-xs text-slate-400">{{ kpis.fraud_rate|pct:1 }} fueron fraude en el histórico</p>
+  </div>
+  <a href="{% url 'claims:list' %}?riesgo=alto&estado=pending" class="card p-5 transition hover:border-red-200 hover:shadow-md">
+    <p class="text-sm text-slate-500">Alto riesgo sin resolver</p>
+    <p class="mt-2 text-2xl sm:text-3xl font-bold tabular-nums text-red-600">{{ kpis.high_open }}</p>
+    <p class="mt-1 text-xs text-slate-400">Score ≥ 50% · pendientes o en revisión</p>
+  </a>
+  <div class="card p-5">
+    <p class="text-sm text-slate-500">Monto en riesgo</p>
+    <p class="mt-2 text-2xl sm:text-3xl font-bold tabular-nums text-slate-900">{{ kpis.amount_at_risk|money_short }}</p>
+    <p class="mt-1 text-xs text-slate-400">Suma reclamada en esos casos ({{ kpis.amount_at_risk|money }})</p>
+  </div>
+  <div class="card p-5">
+    <p class="text-sm text-slate-500">Capacidad del modelo</p>
+    <p class="mt-2 text-2xl sm:text-3xl font-bold tabular-nums text-indigo-600">{{ metrics.roc_auc|floatformat:2 }}</p>
+    <p class="mt-1 text-xs text-slate-400">ROC-AUC con validación cruzada</p>
+  </div>
+</section>
+
+<!-- Niveles de riesgo + métricas -->
+<section class="mt-6 grid gap-6 lg:grid-cols-3">
+  <div class="card p-6 lg:col-span-2">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 class="font-semibold text-slate-900">¿Funciona la priorización?</h2>
+        <p class="mt-1 text-sm text-slate-500">Tasa real de fraude dentro de cada nivel de riesgo asignado por el modelo.</p>
+      </div>
+    </div>
+    <div class="mt-6 space-y-5">
+      {% for t in tiers %}
+        <a href="{% url 'claims:list' %}?riesgo={{ t.level }}" class="group block">
+          <div class="flex items-center justify-between text-sm">
+            <span class="flex items-center gap-3">
+              {% include "claims/_risk_badge.html" with risk=t.level %}
+              <span class="text-slate-500">{{ t.n }} reclamos · {{ t.share|pct }} del total</span>
+            </span>
+            <span class="font-semibold tabular-nums text-slate-900 group-hover:text-indigo-600">{{ t.fraud_rate|pct }} fraude real</span>
+          </div>
+          <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
+            <div class="bar-{{ t.level }} h-full rounded-full" style="width: {% widthratio t.fraud_rate 1 100 %}%"></div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+    <p class="mt-6 rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-500">
+      Los scores del histórico se calcularon con validación cruzada de 5 folds: cada reclamo fue evaluado por un modelo que no lo vio durante el entrenamiento.
+    </p>
+  </div>
+
+  <div class="card p-6">
+    <h2 class="font-semibold text-slate-900">Métricas del modelo</h2>
+    <p class="mt-1 text-sm text-slate-500">Gradient Boosting · umbral 50%</p>
+    <dl class="mt-5 grid grid-cols-3 gap-3 text-center">
+      <div class="rounded-lg bg-slate-50 p-3"><dt class="text-xs text-slate-500">Recall</dt><dd class="mt-1 text-lg font-bold tabular-nums">{{ metrics.recall|pct }}</dd></div>
+      <div class="rounded-lg bg-slate-50 p-3"><dt class="text-xs text-slate-500">Precisión</dt><dd class="mt-1 text-lg font-bold tabular-nums">{{ metrics.precision|pct }}</dd></div>
+      <div class="rounded-lg bg-slate-50 p-3"><dt class="text-xs text-slate-500">F1</dt><dd class="mt-1 text-lg font-bold tabular-nums">{{ metrics.f1|floatformat:2 }}</dd></div>
+    </dl>
+    <p class="mt-5 text-xs font-medium uppercase tracking-wide text-slate-400">Matriz de confusión</p>
+    <div class="mt-2 grid grid-cols-[auto_1fr_1fr] gap-1.5 text-center text-sm">
+      <div></div>
+      <div class="text-xs text-slate-500">Predice legítimo</div>
+      <div class="text-xs text-slate-500">Predice fraude</div>
+      <div class="self-center pr-2 text-right text-xs text-slate-500">Legítimo</div>
+      <div class="rounded-lg bg-emerald-50 py-3 font-bold text-emerald-700">{{ metrics.confusion.tn }}</div>
+      <div class="rounded-lg bg-amber-50 py-3 font-bold text-amber-700">{{ metrics.confusion.fp }}</div>
+      <div class="self-center pr-2 text-right text-xs text-slate-500">Fraude</div>
+      <div class="rounded-lg bg-red-50 py-3 font-bold text-red-700">{{ metrics.confusion.fn }}</div>
+      <div class="rounded-lg bg-emerald-50 py-3 font-bold text-emerald-700">{{ metrics.confusion.tp }}</div>
+    </div>
+    <p class="mt-3 text-xs leading-relaxed text-slate-400">El modelo prioriza el recall: es preferible auditar algunos legítimos de más que dejar pasar fraudes.</p>
+  </div>
+</section>
+
+<!-- Gráficos -->
+<section class="mt-6 grid gap-6 lg:grid-cols-2">
+  <div class="card p-6">
+    <h2 class="font-semibold text-slate-900">Tasa de fraude por severidad</h2>
+    <p class="mt-1 text-sm text-slate-500">Los daños mayores concentran la mayoría de los fraudes.</p>
+    <div class="mt-4 h-64"><canvas id="severityChart"></canvas></div>
+  </div>
+  <div class="card p-6">
+    <h2 class="font-semibold text-slate-900">Distribución de scores</h2>
+    <p class="mt-1 text-sm text-slate-500">Los fraudes reales se concentran en los scores altos.</p>
+    <div class="mt-4 h-64"><canvas id="scoreChart"></canvas></div>
+  </div>
+  <div class="card p-6">
+    <h2 class="font-semibold text-slate-900">Hobbies con mayor tasa de fraude</h2>
+    <p class="mt-1 text-sm text-slate-500">Una señal inesperada que el modelo aprendió del dataset.</p>
+    <div class="mt-4 h-72"><canvas id="hobbyChart"></canvas></div>
+  </div>
+  <div class="card p-6">
+    <h2 class="font-semibold text-slate-900">Variables más importantes</h2>
+    <p class="mt-1 text-sm text-slate-500">Cuánto empeora el modelo si se “desordena” cada variable.</p>
+    <div class="mt-4 h-72"><canvas id="importanceChart"></canvas></div>
+  </div>
+</section>
+
+<!-- Top pendientes -->
+<section class="card mt-6 overflow-hidden">
+  <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+    <div>
+      <h2 class="font-semibold text-slate-900">Próximos a auditar</h2>
+      <p class="text-sm text-slate-500">Reclamos de alto riesgo todavía sin resolver.</p>
+    </div>
+    <a href="{% url 'claims:list' %}?riesgo=alto&estado=pending" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Ver todos →</a>
+  </div>
+  <ul class="divide-y divide-slate-100">
+    {% for c in top_open %}
+      <li>
+        <a href="{{ c.get_absolute_url }}" class="flex flex-wrap items-center gap-x-6 gap-y-1 px-6 py-3.5 hover:bg-slate-50">
+          <span class="w-20 font-mono text-sm font-semibold text-slate-900">{{ c.policy_number }}</span>
+          <span class="min-w-40 flex-1 text-sm text-slate-600">{{ c.get_incident_severity_display }} · {{ c.get_incident_type_display }}</span>
+          <span class="w-28 text-right text-sm tabular-nums text-slate-600">{{ c.total_claim_amount|money }}</span>
+          <span class="w-14 text-right text-sm font-bold tabular-nums text-risk-{{ c.risk }}">{{ c.score_pct }}%</span>
+        </a>
+      </li>
+    {% empty %}
+      <li class="px-6 py-8 text-center text-sm text-slate-500">No quedan reclamos de alto riesgo pendientes. 🎉</li>
+    {% endfor %}
+  </ul>
+</section>
+
+{{ charts|json_script:"chart-data" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// Se espera a que cargue la fuente Inter para que Chart.js mida bien las etiquetas
+document.fonts.ready.then(() => {
+  const data = JSON.parse(document.getElementById("chart-data").textContent);
+  Chart.defaults.font.family = "Inter, ui-sans-serif, system-ui";
+  Chart.defaults.color = "#64748b";
+  Chart.defaults.plugins.legend.labels.usePointStyle = true;
+  const grid = { color: "#f1f5f9" };
+  const pctTick = { callback: (v) => v + "%" };
+  const pctTooltip = { callbacks: { label: (ctx) => ` ${ctx.parsed.x ?? ctx.parsed.y}%` } };
+
+  new Chart(document.getElementById("severityChart"), {
+    type: "bar",
+    data: {
+      labels: data.severity.labels,
+      datasets: [{ data: data.severity.values, backgroundColor: ["#ef4444", "#f59e0b", "#fbbf24", "#10b981"], borderRadius: 8, maxBarThickness: 64 }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: pctTooltip },
+      scales: { y: { beginAtZero: true, grid, ticks: pctTick }, x: { grid: { display: false } } },
+    },
+  });
+
+  new Chart(document.getElementById("scoreChart"), {
+    type: "bar",
+    data: {
+      labels: data.scores.labels,
+      datasets: [
+        { label: "Legítimos", data: data.scores.legit, backgroundColor: "#cbd5e1", borderRadius: 4 },
+        { label: "Fraudes reales", data: data.scores.fraud, backgroundColor: "#6366f1", borderRadius: 4 },
+      ],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom" } },
+      scales: { x: { stacked: true, grid: { display: false }, title: { display: true, text: "Probabilidad de fraude estimada" } },
+                y: { stacked: true, grid, title: { display: true, text: "Reclamos" } } },
+    },
+  });
+
+  const horizontal = (id, chart, color) => new Chart(document.getElementById(id), {
+    type: "bar",
+    data: { labels: chart.labels, datasets: [{ data: chart.values, backgroundColor: color, borderRadius: 6, maxBarThickness: 22 }] },
+    options: {
+      indexAxis: "y",
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: pctTooltip },
+      scales: { x: { beginAtZero: true, grid, ticks: pctTick }, y: { grid: { display: false }, afterFit: (scale) => { scale.width = Math.max(scale.width, 150); } } },
+    },
+  });
+  horizontal("hobbyChart", data.hobbies, "#f97316");
+  horizontal("importanceChart", data.importance, "#6366f1");
+});
+</script>
+{% endblock %}

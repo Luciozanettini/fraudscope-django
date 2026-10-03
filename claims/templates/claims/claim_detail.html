@@ -1,0 +1,109 @@
+{% extends "claims/base.html" %}
+{% load claims_extras %}
+{% block title %}Póliza {{ claim.policy_number }}{% endblock %}
+
+{% block content %}
+<a href="{% url 'claims:list' %}" class="text-sm font-medium text-slate-500 hover:text-indigo-600">← Volver a la bandeja</a>
+
+<div class="mt-3 mb-6 flex flex-wrap items-center gap-3">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900">Póliza <span class="font-mono">{{ claim.policy_number }}</span></h1>
+  <span class="badge status-{{ claim.status }}">{{ claim.get_status_display }}</span>
+  <span class="text-sm text-slate-400">{{ claim.get_source_display }}</span>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <!-- Columna izquierda: score, factores, revisión -->
+  <div class="space-y-6">
+    <div class="card p-6">
+      {% include "claims/_gauge.html" with pct=claim.score_pct risk=claim.risk %}
+      {% if claim.fraud_reported is not None %}
+        <p class="mt-5 rounded-lg bg-slate-50 p-3 text-center text-xs text-slate-500">
+          Resultado histórico: <span class="font-semibold {% if claim.fraud_reported %}text-red-600{% else %}text-emerald-600{% endif %}">{% if claim.fraud_reported %}fue fraude{% else %}fue legítimo{% endif %}</span>
+        </p>
+      {% endif %}
+    </div>
+
+    <div class="card p-6">
+      <h2 class="mb-4 font-semibold text-slate-900">¿Por qué este score?</h2>
+      {% include "claims/_factors.html" %}
+    </div>
+
+    <form method="post" class="card space-y-4 p-6">
+      {% csrf_token %}
+      <h2 class="font-semibold text-slate-900">Revisión del auditor</h2>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700" for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+        {{ form.status }}
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium text-slate-700" for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+        {{ form.notes }}
+      </div>
+      <button class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">Guardar revisión</button>
+      <p class="text-center text-xs text-slate-400">Última actualización: {{ claim.updated_at|date:"d/m/Y H:i" }}</p>
+    </form>
+  </div>
+
+  <!-- Columna derecha: datos del reclamo -->
+  <div class="space-y-6 lg:col-span-2">
+    <div class="card p-6">
+      <h2 class="font-semibold text-slate-900">Montos reclamados</h2>
+      <div class="mt-4 grid gap-3 sm:grid-cols-4">
+        <div class="rounded-xl bg-indigo-50 p-4 sm:col-span-1">
+          <p class="text-xs font-medium text-indigo-600">Total</p>
+          <p class="mt-1 text-xl font-bold tabular-nums text-indigo-900">{{ claim.total_claim_amount|money }}</p>
+        </div>
+        <div class="rounded-xl bg-slate-50 p-4"><p class="text-xs text-slate-500">Vehículo</p><p class="mt-1 text-lg font-semibold tabular-nums">{{ claim.vehicle_claim|money }}</p></div>
+        <div class="rounded-xl bg-slate-50 p-4"><p class="text-xs text-slate-500">Propiedad</p><p class="mt-1 text-lg font-semibold tabular-nums">{{ claim.property_claim|money }}</p></div>
+        <div class="rounded-xl bg-slate-50 p-4"><p class="text-xs text-slate-500">Lesiones</p><p class="mt-1 text-lg font-semibold tabular-nums">{{ claim.injury_claim|money }}</p></div>
+      </div>
+    </div>
+
+    <div class="card p-6">
+      <h2 class="font-semibold text-slate-900">Incidente</h2>
+      <dl class="mt-4 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+        <div><dt class="text-slate-500">Severidad</dt><dd class="font-medium text-slate-900">{{ claim.get_incident_severity_display }}</dd></div>
+        <div><dt class="text-slate-500">Tipo</dt><dd class="font-medium text-slate-900">{{ claim.get_incident_type_display }}</dd></div>
+        <div><dt class="text-slate-500">Colisión</dt><dd class="font-medium text-slate-900">{{ claim.get_collision_type_display }}</dd></div>
+        <div><dt class="text-slate-500">Fecha y hora</dt><dd class="font-medium text-slate-900">{{ claim.incident_date|date:"d/m/Y"|default:"—" }} · {{ claim.incident_hour_of_the_day }} h</dd></div>
+        <div><dt class="text-slate-500">Lugar</dt><dd class="font-medium text-slate-900">{% if claim.incident_city %}{{ claim.incident_city }}, {{ claim.incident_state }}{% else %}—{% endif %}</dd></div>
+        <div><dt class="text-slate-500">Autoridad contactada</dt><dd class="font-medium text-slate-900">{{ claim.get_authorities_contacted_display }}</dd></div>
+        <div><dt class="text-slate-500">Vehículos involucrados</dt><dd class="font-medium text-slate-900">{{ claim.number_of_vehicles_involved }}</dd></div>
+        <div><dt class="text-slate-500">Testigos</dt><dd class="font-medium text-slate-900">{{ claim.witnesses }}</dd></div>
+        <div><dt class="text-slate-500">Lesionados</dt><dd class="font-medium text-slate-900">{{ claim.bodily_injuries }}</dd></div>
+        <div><dt class="text-slate-500">Daño a la propiedad</dt><dd class="font-medium text-slate-900">{{ claim.get_property_damage_display }}</dd></div>
+        <div><dt class="text-slate-500">Denuncia policial</dt><dd class="font-medium text-slate-900">{{ claim.get_police_report_available_display }}</dd></div>
+      </dl>
+    </div>
+
+    <div class="grid gap-6 sm:grid-cols-2">
+      <div class="card p-6">
+        <h2 class="font-semibold text-slate-900">Asegurado y póliza</h2>
+        <dl class="mt-4 space-y-3 text-sm">
+          <div class="flex justify-between"><dt class="text-slate-500">Edad</dt><dd class="font-medium">{{ claim.age }} años</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">Hobby</dt><dd class="font-medium">{{ claim.get_insured_hobbies_display }}</dd></div>
+          {% if claim.insured_occupation %}<div class="flex justify-between"><dt class="text-slate-500">Ocupación</dt><dd class="font-medium">{{ claim.insured_occupation }}</dd></div>{% endif %}
+          <div class="flex justify-between"><dt class="text-slate-500">Antigüedad</dt><dd class="font-medium">{{ claim.months_as_customer }} meses</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">Prima anual</dt><dd class="font-medium tabular-nums">{{ claim.policy_annual_premium|money }}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-500">Franquicia</dt><dd class="font-medium tabular-nums">{{ claim.policy_deductable|money }}</dd></div>
+        </dl>
+      </div>
+      <div class="card p-6">
+        <h2 class="font-semibold text-slate-900">Vehículo</h2>
+        {% if claim.auto_make %}
+          <p class="mt-4 text-2xl font-bold text-slate-900">{{ claim.auto_make }} {{ claim.auto_model }}</p>
+          <p class="text-sm text-slate-500">Año {{ claim.auto_year }}</p>
+        {% else %}
+          <p class="mt-4 text-sm text-slate-500">Sin datos del vehículo (carga manual).</p>
+        {% endif %}
+        {% if claim.notes %}
+          <div class="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Notas</p>
+            <p class="mt-1 whitespace-pre-line">{{ claim.notes }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

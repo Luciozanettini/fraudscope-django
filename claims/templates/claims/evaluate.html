@@ -1,0 +1,72 @@
+{% extends "claims/base.html" %}
+{% load claims_extras %}
+{% block title %}Evaluar reclamo{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-900">Evaluar un reclamo</h1>
+  <p class="mt-1 text-sm text-slate-500">Cargá los datos y el modelo estima la probabilidad de fraude al instante. El formulario arranca con los valores de un reclamo típico.</p>
+</div>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <form method="post" class="space-y-6 lg:col-span-2" novalidate>
+    {% csrf_token %}
+    {% if form.errors %}
+      <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <p class="font-semibold">Revisá los campos marcados en rojo:</p>
+        <ul class="mt-1 list-inside list-disc">
+          {% for field in form %}{% for error in field.errors %}<li>{{ field.label }}: {{ error }}</li>{% endfor %}{% endfor %}
+          {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    {% for title, fields in form.sections %}
+      <fieldset class="card p-6">
+        <legend class="sr-only">{{ title }}</legend>
+        <h2 class="mb-4 font-semibold text-slate-900">{{ title }}</h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {% for field in fields %}
+            <div class="{% if field.errors %}field-error{% endif %}">
+              <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium text-slate-700">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}<p class="mt-1 text-xs text-red-600">{{ field.errors.0 }}</p>
+              {% elif field.help_text %}<p class="mt-1 text-xs text-slate-400">{{ field.help_text }}</p>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </fieldset>
+    {% endfor %}
+
+    <div class="card flex flex-wrap items-center justify-between gap-4 p-4">
+      <label class="flex items-center gap-2 text-sm text-slate-700">{{ form.save_claim }} {{ form.save_claim.label }}</label>
+      <button class="rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">Calcular riesgo</button>
+    </div>
+  </form>
+
+  <aside class="lg:sticky lg:top-24 lg:self-start">
+    {% if result %}
+      <div class="card p-6">
+        {% include "claims/_gauge.html" with pct=result.pct risk=result.risk %}
+        <p class="mt-5 text-center text-sm text-slate-500">Monto total reclamado: <span class="font-semibold text-slate-900">{{ result.total|money }}</span></p>
+        <div class="mt-6 border-t border-slate-100 pt-5">
+          <h2 class="mb-4 font-semibold text-slate-900">¿Qué influyó?</h2>
+          {% include "claims/_factors.html" with factors=result.factors %}
+        </div>
+        <p class="mt-5 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+          {% if result.risk == "alto" %}Recomendación: derivar a auditoría antes de aprobar el pago.
+          {% elif result.risk == "medio" %}Recomendación: pedir documentación adicional.
+          {% else %}Recomendación: circuito normal de aprobación.{% endif %}
+        </p>
+      </div>
+    {% else %}
+      <div class="card border-dashed p-8 text-center">
+        <div class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-indigo-50 text-indigo-600">
+          <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <p class="mt-4 font-semibold text-slate-900">El resultado aparece acá</p>
+        <p class="mt-1 text-sm text-slate-500">Probá cambiar la severidad a «Daño mayor» o el hobby a «Ajedrez» y mirá cómo sube el score.</p>
+      </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

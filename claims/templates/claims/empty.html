@@ -1,0 +1,10 @@
+{% extends "claims/base.html" %}
+{% block title %}Primeros pasos{% endblock %}
+{% block content %}
+<div class="card mx-auto max-w-xl p-8 text-center">
+  <h1 class="text-xl font-bold text-slate-900">Todavía no hay datos cargados</h1>
+  <p class="mt-2 text-sm text-slate-500">Entrená el modelo e importá el histórico de reclamos con estos comandos:</p>
+  <pre class="mt-5 rounded-lg bg-slate-900 p-4 text-left text-sm text-slate-100">python manage.py train_model
+python manage.py import_claims</pre>
+</div>
+{% endblock %}
